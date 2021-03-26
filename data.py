@@ -8,10 +8,23 @@ from transformers import (
     DataCollatorForLanguageModeling,
 )
 
+
 class LMDataModule(pl.LightningDataModule):
-    def __init__(self, model_name_or_path, train_file, validation_file, line_by_line, pad_to_max_length,
-                 preprocessing_num_workers, overwrite_cache, max_seq_length, mlm_probability,
-                 train_batch_size, val_batch_size, dataloader_num_workers):
+    def __init__(
+        self,
+        model_name_or_path,
+        train_file,
+        validation_file,
+        line_by_line,
+        pad_to_max_length,
+        preprocessing_num_workers,
+        overwrite_cache,
+        max_seq_length,
+        mlm_probability,
+        train_batch_size,
+        val_batch_size,
+        dataloader_num_workers,
+    ):
         super().__init__()
         self.train_file = train_file
         self.validation_file = validation_file
@@ -46,8 +59,11 @@ class LMDataModule(pl.LightningDataModule):
 
             def tokenize_function(examples):
                 # Remove empty lines
-                examples["text"] = [line for line in examples["text"]
-                                    if len(line) > 0 and not line.isspace()]
+                examples["text"] = [
+                    line
+                    for line in examples["text"]
+                    if len(line) > 0 and not line.isspace()
+                ]
                 return tokenizer(
                     examples["text"],
                     padding=padding,
@@ -70,7 +86,9 @@ class LMDataModule(pl.LightningDataModule):
             # We use `return_special_tokens_mask=True` because DataCollatorForLanguageModeling (see below) is more
             # efficient when it receives the `special_tokens_mask`.
             def tokenize_function(examples):
-                return tokenizer(examples[text_column_name], return_special_tokens_mask=True)
+                return tokenizer(
+                    examples[text_column_name], return_special_tokens_mask=True
+                )
 
             tokenized_datasets = datasets.map(
                 tokenize_function,
@@ -88,22 +106,29 @@ class LMDataModule(pl.LightningDataModule):
                         f"The max_seq_length passed ({max_seq_length}) is larger than the maximum length for the"
                         f"model ({tokenizer.model_max_length}). Using max_seq_length={tokenizer.model_max_length}."
                     )
-                self.max_seq_length = min(self.max_seq_length, tokenizer.model_max_length)
+                self.max_seq_length = min(
+                    self.max_seq_length, tokenizer.model_max_length
+                )
 
             # Main data processing function that will concatenate all texts from our dataset and generate chunks of
             # max_seq_length.
             def group_texts(examples):
                 # Concatenate all texts.
                 concatenated_examples = {
-                    k: sum(examples[k], []) for k in examples.keys()}
+                    k: sum(examples[k], []) for k in examples.keys()
+                }
                 total_length = len(concatenated_examples[list(examples.keys())[0]])
                 # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
                 # customize this part to your needs.
-                total_length = (total_length // self.max_seq_length) * self.max_seq_length
+                total_length = (
+                    total_length // self.max_seq_length
+                ) * self.max_seq_length
                 # Split by chunks of max_len.
                 result = {
-                    k: [t[i: i + self.max_seq_length]
-                        for i in range(0, total_length, self.max_seq_length)]
+                    k: [
+                        t[i : i + self.max_seq_length]
+                        for i in range(0, total_length, self.max_seq_length)
+                    ]
                     for k, t in concatenated_examples.items()
                 }
                 return result
@@ -122,7 +147,8 @@ class LMDataModule(pl.LightningDataModule):
             )
 
         data_collator = DataCollatorForLanguageModeling(
-            tokenizer=tokenizer, mlm_probability=self.mlm_probability)
+            tokenizer=tokenizer, mlm_probability=self.mlm_probability
+        )
 
         train_dataset = tokenized_datasets["train"]
         eval_dataset = tokenized_datasets["validation"]
