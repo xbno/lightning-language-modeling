@@ -52,7 +52,9 @@
                 "0",
                 "--fast_dev_run",
                 "--mc_bt_path",
-                "/Users/xbno/options_trading/pl_transformer/sample_data/transformer_100sm.csv.gz"
+                "/Users/xbno/options_trading/pl_transformer/sample_data/transformer_100sm.csv.gz",
+                "--dataloader_type",
+                "mine"
             ],
         },
     ]

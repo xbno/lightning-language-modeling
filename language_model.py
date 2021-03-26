@@ -79,6 +79,7 @@ def cli_main():
     parser.add_argument("--train_batch_size", type=int, default=4)
     parser.add_argument("--val_batch_size", type=int, default=8)
     parser.add_argument("--dataloader_num_workers", type=int, default=4)
+    parser.add_argument("--dataloader_type", type=str, default="original")
     parser = pl.Trainer.add_argparse_args(parser)
     parser = pl_data.McBtTrades.add_model_specific_args(parser)
     parser = LMModel.add_model_specific_args(parser)
@@ -87,33 +88,35 @@ def cli_main():
     # ------------
     # data
     # ------------
-    data_module = LMDataModule(
-        model_name_or_path=args.model_name_or_path,
-        train_file=args.train_file,
-        validation_file=args.validation_file,
-        line_by_line=args.line_by_line,
-        pad_to_max_length=args.pad_to_max_length,
-        preprocessing_num_workers=args.preprocessing_num_workers,
-        overwrite_cache=args.overwrite_cache,
-        max_seq_length=args.max_seq_length,
-        mlm_probability=args.mlm_probability,
-        train_batch_size=args.train_batch_size,
-        val_batch_size=args.val_batch_size,
-        dataloader_num_workers=args.dataloader_num_workers,
-    )
-    # data_module = pl_data.McBtTrades(
-    #     mc_bt_path=args.mc_bt_path,
-    #     bin_cols=args.bin_cols,
-    #     symbols=args.symbols,
-    #     model_name_or_path=args.model_name_or_path,
-    #     pad_to_max_length=args.pad_to_max_length,
-    #     max_seq_length=args.max_seq_length,
-    #     mlm_probability=args.mlm_probability,
-    #     dupe_factor=args.dupe_factor,
-    #     short_seq_prob=args.short_seq_prob,
-    #     batch_size=args.batch_size,
-    #     num_workers=args.num_workers,
-    # )
+    if args.dataloader_type == "original":
+        data_module = LMDataModule(
+            model_name_or_path=args.model_name_or_path,
+            train_file=args.train_file,
+            validation_file=args.validation_file,
+            line_by_line=args.line_by_line,
+            pad_to_max_length=args.pad_to_max_length,
+            preprocessing_num_workers=args.preprocessing_num_workers,
+            overwrite_cache=args.overwrite_cache,
+            max_seq_length=args.max_seq_length,
+            mlm_probability=args.mlm_probability,
+            train_batch_size=args.train_batch_size,
+            val_batch_size=args.val_batch_size,
+            dataloader_num_workers=args.dataloader_num_workers,
+        )
+    else:
+        data_module = pl_data.McBtTrades(
+            mc_bt_path=args.mc_bt_path,
+            bin_cols=args.bin_cols,
+            symbols=args.symbols,
+            model_name_or_path=args.model_name_or_path,
+            pad_to_max_length=args.pad_to_max_length,
+            max_seq_length=args.max_seq_length,
+            mlm_probability=args.mlm_probability,
+            dupe_factor=args.dupe_factor,
+            short_seq_prob=args.short_seq_prob,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+        )
 
     # ------------
     # model
