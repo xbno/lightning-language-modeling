@@ -220,14 +220,34 @@ class LMElectraModel(pl.LightningModule):
         # return self.model(x).logits
         return self.discriminator(x, return_dict=True).logits
 
-    def generator_step(self, batch, batch_idx):
-
-        pass
+    def mlm_step(self, gen_input):
+        # electra generator step
+        mlm_logits = self.generator(**gen_input, return_dict=True).logits
+        # masked_idx = (gen_input["input_ids"] == self.mask_token_id).nonzero(
+        #     as_tuple=True
+        # )
+        mlm_replacement_logits = mlm_logits[self.masked_idx]
+        mlm_replacements = pl_data.gumbel_sample(
+            mlm_replacement_logits, temperature=self.temperature
+        )
+        # generator loss
+        self.mlm_loss = F.cross_entropy(
+            mlm_logits.transpose(1, 2),
+            gen_input["labels"],
+            ignore_index=-100,
+            # ignore_index=self.pad_token_id,
+        )
+        return mlm_replacements
 
     def training_step(self, batch, batch_idx):
+        self.masked_idx = (batch["input_ids"] == self.mask_token_id).nonzero(
+            as_tuple=True
+        )
+
         # electra gen input
         gen_input = {k: v for k, v in batch.items()}
         gen_input["input_ids"] = batch["input_ids"].clone().detach()
+        # mlm_loss = self.mlm_step(gen_input)
 
         # electra generator step
         mlm_logits = self.generator(**gen_input, return_dict=True).logits
@@ -250,7 +270,7 @@ class LMElectraModel(pl.LightningModule):
         # electra disc input
         disc_input = {k: v for k, v in batch.items() if k != "labels"}
         disc_input["input_ids"] = batch["input_ids"].clone()
-        disc_input["input_ids"][masked_idx] = mlm_replacements.detach()
+        disc_input["input_ids"][self.masked_idx] = mlm_replacements.detach()
         # can't pass through classification model because it uses crossentropy
         # disc_input["labels"] = (
         #     (batch["input_ids"] != disc_input["input_ids"]).float().detach()
@@ -275,8 +295,55 @@ class LMElectraModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss = self.model(**batch, return_dict=True).loss
-        self.log("valid_loss", loss, on_step=True)  # , sync_dist=True)
+        self.masked_idx = (batch["input_ids"] == self.mask_token_id).nonzero(
+            as_tuple=True
+        )
+
+        # electra gen input
+        gen_input = {k: v for k, v in batch.items()}
+        gen_input["input_ids"] = batch["input_ids"].clone().detach()
+        # mlm_loss = self.mlm_step(gen_input)
+
+        # electra generator step
+        mlm_logits = self.generator(**gen_input, return_dict=True).logits
+        masked_idx = (gen_input["input_ids"] == self.mask_token_id).nonzero(
+            as_tuple=True
+        )
+        mlm_replacement_logits = mlm_logits[masked_idx]
+        mlm_replacements = pl_data.gumbel_sample(
+            mlm_replacement_logits, temperature=self.temperature
+        )
+
+        # electra generator loss
+        mlm_loss = F.cross_entropy(
+            mlm_logits.transpose(1, 2),
+            gen_input["labels"],
+            ignore_index=-100,
+            # ignore_index=self.pad_token_id,
+        )
+
+        # electra disc input
+        disc_input = {k: v for k, v in batch.items() if k != "labels"}
+        disc_input["input_ids"] = batch["input_ids"].clone()
+        disc_input["input_ids"][self.masked_idx] = mlm_replacements.detach()
+        # can't pass through classification model because it uses crossentropy
+        # disc_input["labels"] = (
+        #     (batch["input_ids"] != disc_input["input_ids"]).float().detach()
+        # )
+
+        # electra discriminator step
+        non_padded_indices = (disc_input["input_ids"] != 0).nonzero(as_tuple=True)
+        disc_logits = self.discriminator(**disc_input, return_dict=True).logits
+        # disc_loss = F.binary_cross_entropy_with_logits(
+        #     disc_logits[non_padded_indices], disc_input["labels"][non_padded_indices]
+        # )
+        disc_labels = (batch["input_ids"] != disc_input["input_ids"]).float().detach()
+        disc_loss = F.binary_cross_entropy_with_logits(
+            disc_logits[non_padded_indices], disc_labels[non_padded_indices]
+        )
+        loss = self.gen_weight * mlm_loss + self.disc_weight * disc_loss
+        self.log("valid_loss", loss, on_epoch=True)
+        return loss
 
     def configure_optimizers(self):
         optimizer = AdamW(
