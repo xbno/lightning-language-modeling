@@ -48,13 +48,17 @@
                 // "PATH": "${workspaceFolder}/pl_models",
             },
             "args": [
+                // "--model_name_or_path",
+                // "small_gen.json",
                 "--num_workers",
                 "0",
                 "--fast_dev_run",
                 "--mc_bt_path",
                 "/Users/xbno/options_trading/pl_transformer/sample_data/transformer_100sm.csv.gz",
                 "--dataloader_type",
-                "mine"
+                "original",
+                "--max_seq_len",
+                "512"
             ],
         },
     ]

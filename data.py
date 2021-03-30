@@ -40,7 +40,7 @@ class LMDataModule(pl.LightningDataModule):
         self.dataloader_num_workers = dataloader_num_workers
 
     def setup(self, stage):
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         extension = self.train_file.split(".")[-1]
         if extension in ("txt", "raw"):
             extension = "text"
@@ -64,7 +64,7 @@ class LMDataModule(pl.LightningDataModule):
                     for line in examples["text"]
                     if len(line) > 0 and not line.isspace()
                 ]
-                return tokenizer(
+                return self.tokenizer(
                     examples["text"],
                     padding=padding,
                     truncation=True,
@@ -86,7 +86,7 @@ class LMDataModule(pl.LightningDataModule):
             # We use `return_special_tokens_mask=True` because DataCollatorForLanguageModeling (see below) is more
             # efficient when it receives the `special_tokens_mask`.
             def tokenize_function(examples):
-                return tokenizer(
+                return self.tokenizer(
                     examples[text_column_name], return_special_tokens_mask=True
                 )
 
@@ -99,15 +99,15 @@ class LMDataModule(pl.LightningDataModule):
             )
 
             if self.max_seq_length is None:
-                self.max_seq_length = tokenizer.model_max_length
+                self.max_seq_length = self.tokenizer.model_max_length
             else:
-                if self.max_seq_length > tokenizer.model_max_length:
+                if self.max_seq_length > self.tokenizer.model_max_length:
                     warnings.warn(
-                        f"The max_seq_length passed ({max_seq_length}) is larger than the maximum length for the"
-                        f"model ({tokenizer.model_max_length}). Using max_seq_length={tokenizer.model_max_length}."
+                        f"The max_seq_length passed ({self.max_seq_length}) is larger than the maximum length for the"
+                        f"model ({self.tokenizer.model_max_length}). Using max_seq_length={self.tokenizer.model_max_length}."
                     )
                 self.max_seq_length = min(
-                    self.max_seq_length, tokenizer.model_max_length
+                    self.max_seq_length, self.tokenizer.model_max_length
                 )
 
             # Main data processing function that will concatenate all texts from our dataset and generate chunks of
@@ -147,7 +147,7 @@ class LMDataModule(pl.LightningDataModule):
             )
 
         data_collator = DataCollatorForLanguageModeling(
-            tokenizer=tokenizer, mlm_probability=self.mlm_probability
+            tokenizer=self.tokenizer, mlm_probability=self.mlm_probability
         )
 
         train_dataset = tokenized_datasets["train"]
