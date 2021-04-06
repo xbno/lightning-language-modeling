@@ -58,7 +58,8 @@
                 "--mc_bt_path",
                 "/Users/xbno/options_trading/pl_transformer/sample_data/transformer_100sm.csv.gz",
                 "--dataloader_type",
-                "original",
+                "mine",
+                // "original",
                 "--max_seq_len",
                 "512"
             ],
