@@ -223,23 +223,23 @@ class LMElectraModel(pl.LightningModule):
     def forward(self, x):
         return self.discriminator(x, return_dict=True).logits
 
-    def mlm_step(self, gen_input):
-        # electra generator step
-        mlm_logits = self.generator(**gen_input, return_dict=True).logits
-        # masked_idx = (gen_input["input_ids"] == self.mask_token_id).nonzero(
-        #     as_tuple=True
-        # )
-        mlm_replacement_logits = mlm_logits[self.masked_idx]
-        mlm_replacements = pl_data.gumbel_sample(
-            mlm_replacement_logits, temperature=self.temperature
-        )
-        # generator loss
-        self.mlm_loss = F.cross_entropy(
-            mlm_logits.transpose(1, 2),
-            gen_input["labels"],
-            ignore_index=self.pad_token_id,
-        )
-        return mlm_replacements
+    # def mlm_step(self, gen_input):
+    #     # electra generator step
+    #     mlm_logits = self.generator(**gen_input, return_dict=True).logits
+    #     # masked_idx = (gen_input["input_ids"] == self.mask_token_id).nonzero(
+    #     #     as_tuple=True
+    #     # )
+    #     mlm_replacement_logits = mlm_logits[self.masked_idx]
+    #     mlm_replacements = pl_data.gumbel_sample(
+    #         mlm_replacement_logits, temperature=self.temperature
+    #     )
+    #     # generator loss
+    #     self.mlm_loss = F.cross_entropy(
+    #         mlm_logits.transpose(1, 2),
+    #         gen_input["labels"],
+    #         ignore_index=self.pad_token_id,
+    #     )
+    #     return mlm_replacements
 
     def training_step(self, batch, batch_idx):
         self.masked_idx = (batch["input_ids"] == self.mask_token_id).nonzero(
